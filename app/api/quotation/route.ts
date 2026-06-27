@@ -4,10 +4,14 @@ import { db } from "@/app/lib/db";
 
 export async function POST(request: Request) {
   try {
+    // Escape early during build phase if the database string is just our fallback dummy
+    if (process.env.DATABASE_URL?.includes("dummy_url_for_build_purposes")) {
+      return NextResponse.json({ success: true, mock: true }, { status: 201 });
+    }
+
     const body = await request.json();
     const { clientName, clientEmail, sector, items, discount = 0, userId } = body;
 
-    // 1. FIXED: Added 'sector' to the validation to prevent build-time crashes
     if (!clientName || !clientEmail || !sector || !items || !Array.isArray(items) || !userId) {
       return NextResponse.json(
         { error: "Missing required quotation parameters." },
@@ -15,22 +19,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // Calculate base total amount from the JSON item array
     const baseAmount = items.reduce((acc: number, item: any) => {
       return acc + (Number(item.price || 0) * Number(item.quantity || 1));
     }, 0);
 
-    // Apply corporate metrics (7.5% VAT standard in Nigeria)
     const taxRate = 0.075;
     const taxAmount = baseAmount * taxRate;
     const totalFinalAmount = baseAmount + taxAmount - Number(discount);
 
-    // Generate an institutional serial tracker number safely
     const sectorCode = sector ? sector.substring(0, 3).toUpperCase() : "GEN";
     const runningTimestamp = Date.now();
     const quoteNumber = `HS-${sectorCode}-${runningTimestamp.toString().slice(-6)}`;
 
-    // Persist the structured transaction into the database via Prisma
     const storedQuotation = await db.quotation.create({
       data: {
         quoteNumber,
@@ -56,7 +56,6 @@ export async function POST(request: Request) {
   }
 }
 
-// 2. ADDED: Explicit GET handler to satisfy the Next.js static page data collector
 export async function GET() {
   return NextResponse.json({ message: "Quotation API is online" }, { status: 200 });
 }
