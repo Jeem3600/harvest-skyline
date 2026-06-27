@@ -4,11 +4,11 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Pass the datasourceUrl directly using the modern, correct Prisma configuration property
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    datasourceUrl: process.env.DATABASE_URL || "postgresql://dummy_url_for_build_purposes",
-  });
+// Make sure a string exists in the environment before Prisma tries to read it during builds
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = "postgresql://dummy_url_for_build_purposes";
+}
+
+export const db = globalForPrisma.prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
