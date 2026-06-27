@@ -1,4 +1,3 @@
-
 export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { db } from "@/app/lib/db";
@@ -8,8 +7,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { clientName, clientEmail, sector, items, discount = 0, userId } = body;
 
-    // Validate incoming parameters
-    if (!clientName || !clientEmail || !items || !Array.isArray(items) || !userId) {
+    // 1. FIXED: Added 'sector' to the validation to prevent build-time crashes
+    if (!clientName || !clientEmail || !sector || !items || !Array.isArray(items) || !userId) {
       return NextResponse.json(
         { error: "Missing required quotation parameters." },
         { status: 400 }
@@ -26,9 +25,10 @@ export async function POST(request: Request) {
     const taxAmount = baseAmount * taxRate;
     const totalFinalAmount = baseAmount + taxAmount - Number(discount);
 
-    // Generate an institutional serial serial tracker number
+    // Generate an institutional serial tracker number safely
+    const sectorCode = sector ? sector.substring(0, 3).toUpperCase() : "GEN";
     const runningTimestamp = Date.now();
-    const quoteNumber = `HS-${sector.substring(0, 3).toUpperCase()}-${runningTimestamp.toString().slice(-6)}`;
+    const quoteNumber = `HS-${sectorCode}-${runningTimestamp.toString().slice(-6)}`;
 
     // Persist the structured transaction into the database via Prisma
     const storedQuotation = await db.quotation.create({
@@ -40,12 +40,11 @@ export async function POST(request: Request) {
         tax: taxAmount,
         discount: Number(discount),
         status: "PENDING",
-        items: items as any, // Cast directly into database JSON field
+        items: items as any, 
         userId: userId
       }
     });
 
-    // Return the successful ledger response
     return NextResponse.json({ success: true, quotation: storedQuotation }, { status: 201 });
 
   } catch (error: any) {
@@ -55,4 +54,9 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+// 2. ADDED: Explicit GET handler to satisfy the Next.js static page data collector
+export async function GET() {
+  return NextResponse.json({ message: "Quotation API is online" }, { status: 200 });
 }
