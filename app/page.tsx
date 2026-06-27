@@ -1,5 +1,6 @@
 "use client";
 
+// Your imports and component code go below here...
 import Hero from "../components/Hero";
 import Sectors from "../components/Sectors";
 import Features from "../components/Features";
