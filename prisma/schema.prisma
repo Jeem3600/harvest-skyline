@@ -1,0 +1,74 @@
+datasource db {
+  provider = "postgresql"
+  
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  CLIENT
+}
+
+enum DocStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(CLIENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  quotations Quotation[]
+  invoices   Invoice[]
+}
+
+model Quotation {
+  id          String    @id @default(uuid())
+  quoteNumber String    @unique
+  clientName  String
+  clientEmail String
+  amount      Float
+  tax         Float     @default(0.0)
+  discount    Float     @default(0.0)
+  status      DocStatus @default(PENDING)
+  items       Json      // Stores multiple line items cleanly
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Invoice {
+  id            String    @id @default(uuid())
+  invoiceNumber String    @unique
+  amount        Float
+  dueDate       DateTime
+  isPaid        Boolean   @default(false)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model InventoryItem {
+  id          String   @id @default(uuid())
+  sku         String   @unique
+  name        String
+  category    String   // Renewable Energy, Agriculture, etc.
+  quantity    Int      @default(0)
+  lowStockLimit Int    @default(5)
+  price       Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
